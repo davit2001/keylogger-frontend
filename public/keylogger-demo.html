@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keylogger Attack — Cybersecurity Awareness Simulation</title>
+<style>
+
+/* ================================================================
+   RESET & BASE
+   ================================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100vw; height: 100vh; overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Helvetica, Arial, sans-serif; }
+
+/* ================================================================
+   DESKTOP (macOS Big Sur–style wallpaper)
+   ================================================================ */
+#desktop {
+  position: relative; width: 100vw; height: 100vh; overflow: hidden;
+  background:
+    radial-gradient(ellipse 75% 65% at 12% 88%, rgba(18,70,190,.6) 0%, transparent 68%),
+    radial-gradient(ellipse 60% 75% at 88% 12%, rgba(72,28,175,.5) 0%, transparent 62%),
+    radial-gradient(ellipse 110% 110% at 50% 50%, #1b3360 0%, #0c1b38 100%);
+}
+/* subtle dot-grid texture */
+#desktop::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(circle, rgba(255,255,255,.055) 1px, transparent 1px);
+  background-size: 26px 26px; z-index: 0;
+}
+
+/* ================================================================
+   MENU BAR
+   ================================================================ */
+#menubar {
+  position: relative; z-index: 200; height: 26px;
+  background: rgba(12,12,12,.84); backdrop-filter: blur(20px);
+  display: flex; align-items: center; padding: 0 14px;
+  border-bottom: 1px solid rgba(255,255,255,.065);
+}
+.ml  { font-size: 15px; color: #fff; margin-right: 18px; }
+.ma  { font-size: 13px; font-weight: 700; color: #fff; margin-right: 16px; }
+.mi  { font-size: 13px; color: rgba(255,255,255,.8); margin-right: 12px; }
+.mr  { margin-left: auto; display: flex; align-items: center; gap: 14px;
+       font-size: 12px; color: rgba(255,255,255,.75); }
+
+/* ================================================================
+   CONTENT AREA (vertically centered between menubar & dock)
+   ================================================================ */
+#content {
+  position: absolute; top: 26px; bottom: 68px; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1;
+}
+
+/* ================================================================
+   EDITOR WINDOW (macOS Notes style)
+   ================================================================ */
+#editor {
+  width: 488px; background: #f3f3f3; border-radius: 11px;
+  box-shadow: 0 24px 72px rgba(0,0,0,.62), 0 0 0 .5px rgba(0,0,0,.28);
+  overflow: hidden; position: relative; flex-shrink: 0;
+}
+
+/* title bar */
+.tb {
+  height: 36px; background: linear-gradient(180deg, #e4e4e4, #d0d0d0);
+  display: flex; align-items: center; padding: 0 12px;
+  border-bottom: 1px solid #b6b6b6; position: relative; user-select: none;
+}
+.tls { display: flex; gap: 7px; }
+.tl  { width: 12px; height: 12px; border-radius: 50%; border: .5px solid rgba(0,0,0,.12); }
+.c1  { background: #ff5f56; } .c2 { background: #ffbd2e; } .c3 { background: #27c93f; }
+.wt  { position: absolute; left: 50%; transform: translateX(-50%);
+       font-size: 12.5px; font-weight: 600; color: #3d3d3d; }
+
+/* text content */
+.ebody { padding: 15px 20px 10px; background: #fff; border-bottom: 1px solid #dedede; }
+.ntitle { font-size: 19px; font-weight: 700; color: #111; margin-bottom: 9px; }
+.ntext  { font-size: 14px; color: #1e1e1e; line-height: 1.78; min-height: 54px; word-break: break-word; }
+
+#caret {
+  display: inline-block; width: 2px; height: 14px;
+  background: #006eff; vertical-align: text-bottom; margin-left: .5px;
+  animation: caret-blink 1.05s step-end infinite;
+}
+@keyframes caret-blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+
+/* ================================================================
+   ON-SCREEN KEYBOARD
+   ================================================================ */
+#kbd { background: #dadada; padding: 9px 8px 12px; }
+.krow { display: flex; justify-content: center; gap: 3px; margin-bottom: 3px; }
+.k {
+  height: 29px; min-width: 27px; padding: 0 4px;
+  background: linear-gradient(180deg, #fefefe 0%, #eaeaea 100%);
+  border-radius: 4px; border: 1px solid #a8a8a8; box-shadow: 0 2.5px 0 #929292;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: #1a1a1a;
+  cursor: default; user-select: none; position: relative;
+  transition: background .06s, box-shadow .06s, transform .06s;
+}
+.k.lit {
+  background: linear-gradient(180deg, #ffe348 0%, #ffc400 100%);
+  box-shadow: 0 1px 0 #929292; transform: translateY(1.5px);
+}
+.ksp  { min-width: 136px; font-size: 9px; }
+
+/* ================================================================
+   KEY RIPPLE (acoustic side-channel pulse)
+   ================================================================ */
+.ripple {
+  position: fixed; border-radius: 50%; pointer-events: none;
+  border: 1.5px solid rgba(60,195,255,.75);
+  animation: ripout .46s ease-out forwards;
+  transform: translate(-50%,-50%); z-index: 9000;
+}
+.ripple.r2 { border-color: rgba(255,176,60,.55); animation-delay: .08s; }
+@keyframes ripout {
+  0%   { width: 10px; height: 10px; opacity: .92; }
+  100% { width: 58px; height: 58px; opacity: 0;   }
+}
+
+/* ================================================================
+   SPY OVERLAY PANEL
+   ================================================================ */
+#spy {
+  position: absolute; top: 36px; right: 18px; /* just below menu bar */
+  width: 206px;
+  background: #080808; border-radius: 8px;
+  border: 1px solid #1a1a1a;
+  box-shadow: 0 14px 44px rgba(0,0,0,.88), 0 0 0 1px rgba(255,32,32,.13),
+              inset 0 0 40px rgba(255,0,0,.02);
+  overflow: hidden; z-index: 150;
+  animation: spy-flicker 8s ease-in-out infinite;
+}
+@keyframes spy-flicker {
+  0%,91%,100% { opacity:1; }
+  93% { opacity:.80; }
+  95% { opacity:.94; }
+  97% { opacity:.86; }
+}
+
+/* CRT scanline overlay */
+#spy::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 25;
+  background: repeating-linear-gradient(
+    0deg, transparent 0px, transparent 2px,
+    rgba(0,255,110,.022) 2px, rgba(0,255,110,.022) 4px
+  );
+  animation: scl 4.5s linear infinite;
+}
+@keyframes scl { from { background-position: 0 0; } to { background-position: 0 80px; } }
+
+/* spy title bar */
+.spy-tb {
+  background: #0e0e0e; padding: 7px 9px 5px;
+  border-bottom: 1px solid #1a1a1a;
+  display: flex; align-items: center; gap: 6px; position: relative; z-index: 5;
+}
+.sdot {
+  width: 5px; height: 5px; border-radius: 50%; background: #ff1e1e;
+  animation: sdot 1.5s ease-in-out infinite;
+  box-shadow: 0 0 4px #ff1e1e;
+}
+@keyframes sdot {
+  0%,100% { opacity:1; box-shadow: 0 0 4px #ff1e1e; }
+  50%      { opacity:.3; box-shadow: none; }
+}
+.spn { font-family: 'Courier New', monospace; font-size: 9px; color: #ff2222; letter-spacing: .02em; }
+
+/* pulsing eye */
+.spy-eye-wrap { display: flex; justify-content: center; padding: 10px 0 5px; position: relative; z-index: 5; }
+
+.eye-g { animation: eye-blink 3.6s ease-in-out infinite; transform-origin: 30px 20px; }
+@keyframes eye-blink {
+  0%,82%,100% { transform: scaleY(1);    }
+  88%          { transform: scaleY(.07); }
+  92%          { transform: scaleY(.9);  }
+  96%          { transform: scaleY(.07); }
+  99%          { transform: scaleY(1);   }
+}
+
+/* the iris glow pulses */
+.eye-iris { animation: iris-glow 2.2s ease-in-out infinite; }
+@keyframes iris-glow {
+  0%,100% { fill: #ff2828; }
+  50%     { fill: #ff6060; }
+}
+
+/* log section */
+.spy-lbl {
+  font-family: 'Courier New', monospace; font-size: 8px; color: #2d2d2d;
+  padding: 0 10px 3px; text-transform: uppercase; letter-spacing: .14em;
+  position: relative; z-index: 5;
+}
+#slog {
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  font-size: 12.5px; color: #00ff88; padding: 4px 10px 10px;
+  word-break: break-all; line-height: 1.72; letter-spacing: .04em;
+  text-shadow: 0 0 6px rgba(0,255,136,.4); min-height: 52px;
+  position: relative; z-index: 5;
+}
+.lc { display: inline; animation: lc-flash .09s ease-out; }
+@keyframes lc-flash {
+  from { color: #fff; text-shadow: 0 0 12px rgba(255,255,255,.9); }
+  to   { color: #00ff88; text-shadow: 0 0 6px rgba(0,255,136,.4); }
+}
+
+/* data sent overlay (inside spy panel) */
+#dsent {
+  position: absolute; inset: 0; background: rgba(0,0,0,.94);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 30; opacity: 0; pointer-events: none; transition: opacity .22s ease;
+}
+.ds-arr {
+  font-size: 22px; color: #ff1e1e;
+  animation: arr-up .38s ease-in-out infinite alternate;
+}
+@keyframes arr-up { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+.ds-main {
+  font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold;
+  color: #ff2222; margin-top: 4px; letter-spacing: .07em;
+  text-shadow: 0 0 10px rgba(255,30,30,.7);
+}
+.ds-addr {
+  font-family: 'Courier New', monospace; font-size: 8.5px; color: #444; margin-top: 3px;
+}
+
+/* ================================================================
+   FULL-SCREEN RED TINT
+   ================================================================ */
+#tint {
+  position: fixed; inset: 0; background: transparent;
+  pointer-events: none; z-index: 990;
+  transition: background .32s ease;
+}
+
+/* ================================================================
+   DOCK
+   ================================================================ */
+#dock {
+  position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+  height: 60px; display: flex; align-items: flex-end; gap: 5px; padding: 6px 12px;
+  background: rgba(255,255,255,.13); backdrop-filter: blur(22px);
+  border-radius: 15px; border: .5px solid rgba(255,255,255,.18); z-index: 200;
+}
+.di {
+  width: 44px; height: 44px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+  cursor: default; position: relative;
+}
+.di::after {
+  content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+  width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.5);
+}
+
+/* ================================================================
+   DISCLAIMER
+   ================================================================ */
+#disc {
+  position: absolute; bottom: 73px; left: 50%; transform: translateX(-50%);
+  font-size: 9px; color: rgba(255,255,255,.26); white-space: nowrap;
+  letter-spacing: .05em; z-index: 50; text-align: center;
+}
+
+</style>
+</head>
+<body>
+<div id="desktop">
+
+  <!-- ── Menu Bar ── -->
+  <div id="menubar">
+    <span class="ml">&#63743;</span>
+    <span class="ma">Notes</span>
+    <span class="mi">File</span>
+    <span class="mi">Edit</span>
+    <span class="mi">Format</span>
+    <span class="mi">View</span>
+    <div class="mr">
+      <svg width="14" height="11" viewBox="0 0 14 11" fill="rgba(255,255,255,.75)">
+        <path d="M7 2.2C9.5 2.2 11.7 3.3 13.2 5l1-1C12.4 1.9 9.9.7 7 .7S1.6 1.9.8 4l1 1C3.3 3.3 5.5 2.2 7 2.2z"/>
+        <path d="M7 4.8c1.6 0 3 .7 4 1.8l1-1A6.9 6.9 0 007 3.3 6.9 6.9 0 003 5.6l1 1A4.4 4.4 0 017 4.8z"/>
+        <path d="M7 7.4c.9 0 1.7.4 2.3 1l1-1A4.4 4.4 0 007 6a4.4 4.4 0 00-3.2 1.4l1 1A2.9 2.9 0 017 7.4z"/>
+        <circle cx="7" cy="10" r="1"/>
+      </svg>
+      <span id="clk">9:41 AM</span>
+    </div>
+  </div>
+
+  <!-- ── Content: editor centered between menubar & dock ── -->
+  <div id="content">
+    <div id="editor">
+
+      <!-- title bar -->
+      <div class="tb">
+        <div class="tls">
+          <div class="tl c1"></div>
+          <div class="tl c2"></div>
+          <div class="tl c3"></div>
+        </div>
+        <div class="wt">Notes — Personal</div>
+      </div>
+
+      <!-- text area -->
+      <div class="ebody">
+        <div class="ntitle">Private Notes</div>
+        <div class="ntext"><span id="txt"></span><span id="caret"></span></div>
+      </div>
+
+      <!-- on-screen keyboard (rows injected by JS) -->
+      <div id="kbd"></div>
+
+    </div>
+  </div>
+
+  <!-- ── Spy Overlay Panel ── -->
+  <div id="spy">
+    <div class="spy-tb">
+      <div class="sdot"></div>
+      <span class="spn">keylogger.exe — running</span>
+    </div>
+
+    <!-- animated eye -->
+    <div class="spy-eye-wrap">
+      <svg width="52" height="34" viewBox="0 0 60 40" fill="none"
+           style="filter:drop-shadow(0 0 6px rgba(255,28,28,.72))">
+        <g class="eye-g">
+          <!-- whites / sclera shape -->
+          <path d="M3 20 Q30 1 57 20 Q30 39 3 20Z"
+                fill="#110000" stroke="#bb1a1a" stroke-width="1.3"/>
+          <!-- iris ring -->
+          <circle cx="30" cy="20" r="10.5" fill="#170000" stroke="#cc2020" stroke-width=".9"/>
+          <!-- pupil glow -->
+          <circle cx="30" cy="20" r="5.8" class="eye-iris"/>
+          <!-- specular highlight -->
+          <circle cx="34.5" cy="16" r="2.6" fill="rgba(255,255,255,.4)"/>
+          <!-- pupil core -->
+          <circle cx="30" cy="20" r="2.2" fill="#0d0000"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="spy-lbl">// captured keystrokes</div>
+    <div id="slog"></div>
+
+    <!-- "data sent" flash (shown at end of each loop) -->
+    <div id="dsent">
+      <div class="ds-arr">↑</div>
+      <div class="ds-main">DATA SENT</div>
+      <div class="ds-addr">→ 185.220.101.44:4444</div>
+    </div>
+  </div>
+
+  <!-- ── Red screen tint ── -->
+  <div id="tint"></div>
+
+  <!-- ── Dock ── -->
+  <div id="dock">
+    <div class="di" style="background:linear-gradient(135deg,#fbd44c,#f96c1c)">📝</div>
+    <div class="di" style="background:linear-gradient(135deg,#62c2f6,#1e6cb2)">🌐</div>
+    <div class="di" style="background:linear-gradient(135deg,#88e288,#237a23)">📁</div>
+    <div class="di" style="background:linear-gradient(135deg,#e0e0e0,#929292)">⚙️</div>
+    <div class="di" style="background:linear-gradient(135deg,#f590b4,#c4185c)">📷</div>
+    <div class="di" style="background:linear-gradient(135deg,#cf94d8,#7c20a4)">🎵</div>
+  </div>
+
+  <!-- ── Disclaimer ── -->
+  <div id="disc">⚠&nbsp; Educational cybersecurity awareness simulation — demonstrates keylogger attack patterns for training purposes only. No real data is captured.</div>
+
+</div><!-- /desktop -->
+
+<script>
+'use strict';
+
+// ================================================================
+// KEYBOARD LAYOUT
+// ================================================================
+const ROWS = [
+  ['1','2','3','4','5','6','7','8','9','0'],
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['Z','X','C','V','B','N','M'],
+  ['SPACE'],
+];
+
+const KM = {}; // char -> DOM element
+
+function buildKB() {
+  const kbd = document.getElementById('kbd');
+  ROWS.forEach(row => {
+    const rd = document.createElement('div');
+    rd.className = 'krow';
+    row.forEach(k => {
+      const el = document.createElement('div');
+      el.className = k === 'SPACE' ? 'k ksp' : 'k';
+      el.textContent = k === 'SPACE' ? '' : k;
+      rd.appendChild(el);
+
+      // map multiple chars to this key element
+      if (k === 'SPACE') { KM[' '] = el; }
+      else {
+        KM[k]             = el; // 'A'
+        KM[k.toLowerCase()] = el; // 'a'
+      }
+      // punctuation shortcuts
+      if (k === '1') KM['!'] = el;
+      if (k === '2') KM['@'] = el;
+      if (k === '3') KM['#'] = el;
+      if (k === '5') KM['%'] = el;
+      if (k === '7') KM['&'] = el;
+      if (k === '0') { KM[')'] = el; KM['0'] = el; }
+      if (k === '9') KM['('] = el;
+    });
+    kbd.appendChild(rd);
+  });
+  // extra fallbacks
+  KM['.'] = KM['M'] || KM['.'];
+  KM[','] = KM['M'];
+  KM['-'] = KM['0'];
+  KM[':'] = KM['L'];
+  KM[';'] = KM['L'];
+  KM['!'] = KM['1'];
+}
+
+// ================================================================
+// CLOCK
+// ================================================================
+(function tick() {
+  const d  = new Date();
+  const h  = d.getHours() % 12 || 12;
+  const m  = String(d.getMinutes()).padStart(2, '0');
+  const ap = d.getHours() >= 12 ? 'PM' : 'AM';
+  document.getElementById('clk').textContent = `${h}:${m} ${ap}`;
+  setTimeout(tick, 15000);
+})();
+
+// ================================================================
+// TYPING MESSAGES (loop through these)
+// ================================================================
+const MSGS = [
+  'My bank password is Sunfl0wer99!',
+  'PIN code: 4821 — please remember',
+  'SSN number is 583-29-1047',
+  'Dear John, account no. 773498201',
+  'Mom secure note: credit card 6610',
+];
+let msgIdx = 0;
+
+// ================================================================
+// RIPPLE (acoustic side-channel pulse)
+// ================================================================
+function spawnRipple(el) {
+  const r  = el.getBoundingClientRect();
+  const cx = r.left + r.width  / 2;
+  const cy = r.top  + r.height / 2;
+
+  // two concentric rings, slightly offset in time & color
+  [false, true].forEach((isSecond, i) => {
+    const d = document.createElement('div');
+    d.className = isSecond ? 'ripple r2' : 'ripple';
+    // start smaller for the second ring
+    const sz = isSecond ? 8 : 12;
+    d.style.cssText = `left:${cx}px;top:${cy}px;width:${sz}px;height:${sz}px`;
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 550);
+  });
+}
+
+// ================================================================
+// PRESS A KEY (highlight + ripple)
+// ================================================================
+function pressKey(ch) {
+  const el = KM[ch] || KM[ch.toUpperCase()] || KM[ch.toLowerCase()];
+  if (!el) return;
+  el.classList.add('lit');
+  spawnRipple(el);
+  setTimeout(() => el.classList.remove('lit'), 135);
+}
+
+// ================================================================
+// APPEND CHAR TO SPY LOG
+// ================================================================
+function logChar(ch) {
+  const log  = document.getElementById('slog');
+  const span = document.createElement('span');
+  span.className   = 'lc';
+  span.textContent = ch === ' ' ? '\u00a0' : ch;
+  log.appendChild(span);
+  // keep it from getting too long (max ~3 lines worth)
+  if (log.children.length > 60) log.removeChild(log.firstChild);
+}
+
+// ================================================================
+// ASYNC HELPERS
+// ================================================================
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rand  = (a, b) => a + Math.random() * (b - a);
+
+// ================================================================
+// DATA-SENT ANIMATION
+// ================================================================
+async function dataSentSeq() {
+  const ds   = document.getElementById('dsent');
+  const tint = document.getElementById('tint');
+
+  // flash the spy panel data-sent overlay + red screen tint
+  ds.style.opacity   = '1';
+  tint.style.background = 'rgba(190, 14, 14, .22)';
+
+  await sleep(1650);
+
+  ds.style.opacity      = '0';
+  tint.style.background = 'transparent';
+
+  await sleep(380);
+}
+
+// ================================================================
+// MAIN ANIMATION LOOP
+// ================================================================
+async function run() {
+  while (true) {
+    const msg = MSGS[msgIdx % MSGS.length];
+    msgIdx++;
+
+    // reset
+    document.getElementById('txt').textContent  = '';
+    document.getElementById('slog').innerHTML   = '';
+
+    await sleep(820);
+
+    // type each character
+    for (const ch of msg) {
+      document.getElementById('txt').textContent += ch;
+      logChar(ch);
+      pressKey(ch);
+
+      // simulate natural typing rhythm: occasional longer pause at space/punctuation
+      const isPause = ch === ' ' || ch === ',' || ch === '.' || ch === '!';
+      const delay = isPause
+        ? rand(160, 280)   // small pause after word boundary
+        : rand(82, 148);   // normal keystroke interval
+      await sleep(delay);
+    }
+
+    // hold the completed sentence briefly
+    await sleep(1050);
+
+    // run the "data exfiltrated" sequence
+    await dataSentSeq();
+
+    // brief pause before next message
+    await sleep(680);
+  }
+}
+
+// ================================================================
+// BOOT
+// ================================================================
+buildKB();
+run();
+</script>
+</body>
+</html>
