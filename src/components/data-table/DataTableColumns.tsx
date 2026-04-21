@@ -1,5 +1,4 @@
 import { LogRecord } from "@/types";
-import { EncryptedPayloadCell } from "./EncryptedPayloadCell";
 import { TimelineCell } from "./TimelineCell";
 import React from "react";
 
@@ -9,10 +8,9 @@ export const columnConfig: {
   width: string;
 }[] = [
   { key: "id", label: "ID", width: "w-20" },
-  { key: "agentLogId", label: "Agent", width: "w-20" },
-  { key: "encryptedContext", label: "Encrypted Context", width: "w-80" },
-  { key: "encryptedPayload", label: "Encrypted Payload", width: "w-72" },
-  { key: "timestamp", label: "Timestamp", width: "w-36" },
+  { key: "context", label: "Context", width: "w-80" },
+  { key: "payload", label: "Payload", width: "w-72" },
+  { key: "timestamp", label: "Timestamp", width: "w-40" },
 ];
 
 export const cellRenderer: Record<
@@ -24,12 +22,13 @@ export const cellRenderer: Record<
       {String(v)}
     </span>
   ),
-  agentLogId: (v) => (
-    <span className="font-mono text-slate-500 text-sm tabular-nums">
+  context: (v) => (
+    <span className="text-sm text-slate-700 leading-relaxed">{String(v)}</span>
+  ),
+  payload: (v) => (
+    <span className="font-mono text-sm text-amber-600 break-all">
       {String(v)}
     </span>
   ),
-  encryptedContext: (v) => <EncryptedPayloadCell payload={String(v)} />,
-  encryptedPayload: (v) => <EncryptedPayloadCell payload={String(v)} />,
   timestamp: (v) => <TimelineCell isoString={String(v)} />,
 };

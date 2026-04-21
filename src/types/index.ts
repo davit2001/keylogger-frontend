@@ -1,9 +1,8 @@
 export interface LogRecord {
   id: number;
-  agentLogId: number;
   timestamp: string; // ISO 8601
-  encryptedContext: string;
-  encryptedPayload: string;
+  context: string;
+  payload: string;
 }
 
 export interface PaginatedResponse<T> {
