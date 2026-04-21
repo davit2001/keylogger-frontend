@@ -1,7 +1,9 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api",
+  baseURL:
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    "https://java-keyguard-api.onrender.com",
   timeout: 10_000,
 });
 

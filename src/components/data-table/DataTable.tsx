@@ -9,12 +9,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { columnConfig, cellRenderer } from "./DataTableColumns";
-import { DataRecord } from "@/types";
+import { LogRecord } from "@/types";
 
 const MotionTableRow = motion(TableRow);
 
 interface Props {
-  data: DataRecord[];
+  data: LogRecord[];
 }
 
 export default function DataTable({ data }: Props) {
