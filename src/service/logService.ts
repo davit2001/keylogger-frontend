@@ -1,17 +1,17 @@
 import { LogRecord, PaginatedResponse } from "@/types";
-
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  "https://java-keyguard-api.onrender.com";
+import { fetchLogsAction } from "@/app/actions/logs";
 
 export async function getRawLogs(
   page: number,
   size: number
 ): Promise<PaginatedResponse<LogRecord>> {
-  const url = `${BASE_URL}/logs/decrypted?page=${page}&size=${size}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Failed to load logs (${res.status})`);
+  const result = await fetchLogsAction(page, size);
+  if (!result.ok) {
+    const err = new Error(result.error || `Failed (${result.status})`) as Error & {
+      status?: number;
+    };
+    err.status = result.status;
+    throw err;
   }
-  return res.json();
+  return result.data;
 }
